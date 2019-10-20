@@ -33,21 +33,24 @@ class ErrorHandlingSpec extends WordSpec with MustMatchers with EitherValues wit
       } yield b
       unsafeRun(io.either) mustBe Left(KnownError("defect"))
     }
-    "run a defective future into an io" in {
+    "run a defective future into an io by mapping" in {
       val io: IO[ExampleError, String] = for {
         a <- ZIO.fromFuture(implicit ec => produceDefect).mapError(c => UnknownError(c))
         b <- ZIO.fromEither(a)
       } yield b
       unsafeRun(io.either) mustBe Left(KnownError("defect"))
     }
+    "run a defective future into an io via absolve" in {
+      val io: IO[Throwable, String] = ZIO.fromFuture(implicit ec => produceDefect).absolve
+      unsafeRun(io.either) mustBe Left(KnownError("defect"))
+    }
     "run a failing task" in {
       val io: Task[Either[ExampleError, String]] = ZIO.fromFuture(implicit ec => produceFailure)
-      //      assertThrows[FiberFailure](unsafeRun(io))
-      unsafeRun(io.catchAll { case t: Throwable => ZIO.succeed("foo") }) mustEqual "foo"
+      unsafeRun(io.either) mustBe ('left)
     }
     "run a failing task into a future" in {
       val io: Task[Either[ExampleError, String]] = ZIO.fromFuture(implicit ec => produceFailure)
-      unsafeRunToFuture(io.catchAll { case t: RuntimeException => ZIO.succeed("foo") }).futureValue mustEqual "foo"
+      unsafeRunToFuture(io.either).futureValue mustBe ('left)
     }
   }
 
